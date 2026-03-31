@@ -514,9 +514,24 @@ def persist_config() -> None:
         save_current_config()
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0912, PLR0915
+    # Handle `strix update` before argparse (avoids --target requirement)
+    if len(sys.argv) >= 2 and sys.argv[1] == "update":
+        from strix.updater import handle_update_command
+
+        handle_update_command(sys.argv[2:])
+        return
+
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # Auto-update check (non-fatal, runs on every invocation)
+    try:
+        from strix.updater import run_auto_update
+
+        run_auto_update()
+    except Exception:  # noqa: BLE001, S110
+        pass
 
     args = parse_arguments()
 

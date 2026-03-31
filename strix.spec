@@ -144,6 +144,8 @@ hiddenimports += collect_submodules('textual')
 hiddenimports += collect_submodules('rich')
 hiddenimports += collect_submodules('pydantic')
 hiddenimports += collect_submodules('pygments')
+hiddenimports += collect_submodules('strix_autoupdater')
+hiddenimports += collect_submodules('cryptography')
 
 excludes = [
     # Sandbox-only packages
