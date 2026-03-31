@@ -34,7 +34,11 @@ jobs:
 
       - name: Configure git for private dependencies
         shell: bash
-        run: git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${GH_TOKEN}@github.com" > ~/.git-credentials
 
       - name: Build
         shell: bash
