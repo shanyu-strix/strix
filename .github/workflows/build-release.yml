@@ -37,8 +37,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git config --global credential.helper store
-          echo "https://x-access-token:${GH_TOKEN}@github.com" > ~/.git-credentials
+          AUTH=$(echo -n "x-access-token:${GH_TOKEN}" | base64)
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic ${AUTH}"
 
       - name: Build
         shell: bash
