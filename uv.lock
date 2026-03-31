@@ -5540,7 +5540,7 @@ dev = [
 [[package]]
 name = "strix-autoupdater"
 version = "0.1.0"
-source = { git = "https://github.com/usestrix/strix-autoupdater.git#2a970b5ee917c49613ccc342d5ba1fb098e99a19" }
+source = { git = "https://github.com/usestrix/strix-autoupdater.git#7b6e4b13d8867b228a1a71d2e5208ff22530d4ac" }
 dependencies = [
     { name = "cryptography" },
     { name = "requests" },
