@@ -101,7 +101,7 @@ def validate_environment() -> None:  # noqa: PLR0912, PLR0915
                 error_text.append("• ", style="white")
                 error_text.append("STRIX_LLM", style="bold cyan")
                 error_text.append(
-                    " - Model name to use with litellm (e.g., 'openai/gpt-5')\n",
+                    " - Model name to use with litellm (e.g., 'openai/gpt-5.4')\n",
                     style="white",
                 )
 
@@ -140,10 +140,7 @@ def validate_environment() -> None:  # noqa: PLR0912, PLR0915
                     )
 
         error_text.append("\nExample setup:\n", style="white")
-        if uses_strix_models:
-            error_text.append("export STRIX_LLM='strix/gpt-5'\n", style="dim white")
-        else:
-            error_text.append("export STRIX_LLM='openai/gpt-5'\n", style="dim white")
+        error_text.append("export STRIX_LLM='openai/gpt-5.4'\n", style="dim white")
 
         if missing_optional_vars:
             for var in missing_optional_vars:
@@ -459,7 +456,7 @@ def display_completion_message(args: argparse.Namespace, results_path: Path) -> 
     console.print("\n")
     console.print(panel)
     console.print()
-    console.print("[#60a5fa]models.strix.ai[/]  [dim]·[/]  [#60a5fa]discord.gg/strix-ai[/]")
+    console.print("[#60a5fa]strix.ai[/]  [dim]·[/]  [#60a5fa]discord.gg/strix-ai[/]")
     console.print()
 
 
@@ -517,9 +514,24 @@ def persist_config() -> None:
         save_current_config()
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0912, PLR0915
+    # Handle `strix update` before argparse (avoids --target requirement)
+    if len(sys.argv) >= 2 and sys.argv[1] == "update":
+        from strix.updater import handle_update_command
+
+        handle_update_command(sys.argv[2:])
+        return
+
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # Auto-update check (non-fatal, runs on every invocation)
+    try:
+        from strix.updater import run_auto_update
+
+        run_auto_update()
+    except Exception:  # noqa: BLE001, S110
+        pass
 
     args = parse_arguments()
 

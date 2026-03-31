@@ -30,15 +30,23 @@ jobs:
         with:
           python-version: '3.12'
 
-      - uses: snok/install-poetry@v1
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Configure git for private dependencies
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          AUTH=$(echo -n "x-access-token:${GH_TOKEN}" | base64)
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic ${AUTH}"
 
       - name: Build
         shell: bash
         run: |
-          poetry install --with dev
-          poetry run pyinstaller strix.spec --noconfirm
+          uv sync --frozen
+          uv run pyinstaller strix.spec --noconfirm
 
-          VERSION=$(poetry version -s)
+          VERSION=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
           mkdir -p dist/release
 
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -58,7 +66,7 @@ jobs:
             dist/release/*.zip
           if-no-files-found: error
 
-  release:
+  sign-and-release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -69,6 +77,27 @@ jobs:
         with:
           path: release
           merge-multiple: true
+
+      - name: Generate checksums and sign
+        env:
+          SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          cd release
+          pip install cryptography
+          python3 -c "
+          import base64, hashlib, os
+          from pathlib import Path
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+          private_key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(os.environ['SIGNING_KEY']))
+          lines = []
+          for f in sorted(Path('.').glob('strix-*')):
+              h = hashlib.sha256(f.read_bytes()).hexdigest()
+              lines.append(f'{h}  {f.name}')
+          checksums = '\n'.join(lines) + '\n'
+          Path('checksums.txt').write_text(checksums)
+          Path('checksums.txt.sig').write_bytes(private_key.sign(checksums.encode()))
+          "
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

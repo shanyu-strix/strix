@@ -195,58 +195,52 @@ def create_agent(
     try:
         parent_id = agent_state.agent_id
 
-        skill_list = []
-        if skills:
-            skill_list = [s.strip() for s in skills.split(",") if s.strip()]
+        from strix.skills import parse_skill_list, validate_requested_skills
 
-        if len(skill_list) > 5:
+        skill_list = parse_skill_list(skills)
+        validation_error = validate_requested_skills(skill_list)
+        if validation_error:
             return {
                 "success": False,
-                "error": (
-                    "Cannot specify more than 5 skills for an agent (use comma-separated format)"
-                ),
+                "error": validation_error,
                 "agent_id": None,
             }
-
-        if skill_list:
-            from strix.skills import get_all_skill_names, validate_skill_names
-
-            validation = validate_skill_names(skill_list)
-            if validation["invalid"]:
-                available_skills = list(get_all_skill_names())
-                return {
-                    "success": False,
-                    "error": (
-                        f"Invalid skills: {validation['invalid']}. "
-                        f"Available skills: {', '.join(available_skills)}"
-                    ),
-                    "agent_id": None,
-                }
 
         from strix.agents import StrixAgent
         from strix.agents.state import AgentState
         from strix.llm.config import LLMConfig
 
-        state = AgentState(task=task, agent_name=name, parent_id=parent_id, max_iterations=300)
-
         parent_agent = _agent_instances.get(parent_id)
 
         timeout = None
         scan_mode = "deep"
+        interactive = False
         if parent_agent and hasattr(parent_agent, "llm_config"):
             if hasattr(parent_agent.llm_config, "timeout"):
                 timeout = parent_agent.llm_config.timeout
             if hasattr(parent_agent.llm_config, "scan_mode"):
                 scan_mode = parent_agent.llm_config.scan_mode
+            interactive = getattr(parent_agent.llm_config, "interactive", False)
 
-        llm_config = LLMConfig(skills=skill_list, timeout=timeout, scan_mode=scan_mode)
+        state = AgentState(
+            task=task,
+            agent_name=name,
+            parent_id=parent_id,
+            max_iterations=300,
+            waiting_timeout=300 if interactive else 600,
+        )
+
+        llm_config = LLMConfig(
+            skills=skill_list,
+            timeout=timeout,
+            scan_mode=scan_mode,
+            interactive=interactive,
+        )
 
         agent_config = {
             "llm_config": llm_config,
             "state": state,
         }
-        if parent_agent and hasattr(parent_agent, "non_interactive"):
-            agent_config["non_interactive"] = parent_agent.non_interactive
 
         agent = StrixAgent(agent_config)
 

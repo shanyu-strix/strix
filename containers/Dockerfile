@@ -70,11 +70,7 @@ USER root
 RUN cp /app/certs/ca.crt /usr/local/share/ca-certificates/ca.crt && \
     update-ca-certificates
 
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 - && \
-    ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry && \
-    chmod +x /usr/local/bin/poetry && \
-    python3 -m venv /app/venv && \
-    chown -R pentester:pentester /app/venv /opt/poetry
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 USER pentester
 WORKDIR /tmp
@@ -130,9 +126,8 @@ RUN apt-get autoremove -y && \
     apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-ENV PATH="/home/pentester/go/bin:/home/pentester/.local/bin:/home/pentester/.npm-global/bin:/app/venv/bin:$PATH"
-ENV VIRTUAL_ENV="/app/venv"
-ENV POETRY_HOME="/opt/poetry"
+ENV PATH="/home/pentester/go/bin:/home/pentester/.local/bin:/home/pentester/.npm-global/bin:/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="/app/.venv"
 
 WORKDIR /app
 
@@ -157,31 +152,22 @@ ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 RUN mkdir -p /workspace && chown -R pentester:pentester /workspace /app
 
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml uv.lock ./
+RUN echo "# Sandbox Environment" > README.md && mkdir -p strix && touch strix/__init__.py
 
 USER pentester
-RUN poetry install --no-root --without dev --extras sandbox
-RUN poetry run playwright install chromium
+RUN uv sync --frozen --no-dev --extra sandbox
+RUN /app/.venv/bin/python -m playwright install chromium
 
-RUN /app/venv/bin/pip install -r /home/pentester/tools/jwt_tool/requirements.txt && \
+RUN uv pip install -r /home/pentester/tools/jwt_tool/requirements.txt && \
     ln -s /home/pentester/tools/jwt_tool/jwt_tool.py /home/pentester/.local/bin/jwt_tool
-
-RUN echo "# Sandbox Environment" > README.md
 
 COPY strix/__init__.py strix/
 COPY strix/config/ /app/strix/config/
 COPY strix/utils/ /app/strix/utils/
 COPY strix/telemetry/ /app/strix/telemetry/
 COPY strix/runtime/tool_server.py strix/runtime/__init__.py strix/runtime/runtime.py /app/strix/runtime/
-
-COPY strix/tools/__init__.py strix/tools/registry.py strix/tools/executor.py strix/tools/argument_parser.py strix/tools/context.py /app/strix/tools/
-
-COPY strix/tools/browser/ /app/strix/tools/browser/
-COPY strix/tools/file_edit/ /app/strix/tools/file_edit/
-COPY strix/tools/notes/ /app/strix/tools/notes/
-COPY strix/tools/python/ /app/strix/tools/python/
-COPY strix/tools/terminal/ /app/strix/tools/terminal/
-COPY strix/tools/proxy/ /app/strix/tools/proxy/
+COPY strix/tools/ /app/strix/tools/
 
 RUN echo 'export PATH="/home/pentester/go/bin:/home/pentester/.local/bin:/home/pentester/.npm-global/bin:$PATH"' >> /home/pentester/.bashrc && \
     echo 'export PATH="/home/pentester/go/bin:/home/pentester/.local/bin:/home/pentester/.npm-global/bin:$PATH"' >> /home/pentester/.profile

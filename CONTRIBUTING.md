@@ -8,7 +8,7 @@ Thank you for your interest in contributing to Strix! This guide will help you g
 
 - Python 3.12+
 - Docker (running)
-- Poetry (for dependency management)
+- [uv](https://docs.astral.sh/uv/) (for dependency management)
 - Git
 
 ### Local Development
@@ -24,19 +24,19 @@ Thank you for your interest in contributing to Strix! This guide will help you g
    make setup-dev
 
    # or manually:
-   poetry install --with=dev
-   poetry run pre-commit install
+   uv sync
+   uv run pre-commit install
    ```
 
 3. **Configure your LLM provider**
    ```bash
-   export STRIX_LLM="openai/gpt-5"
+   export STRIX_LLM="openai/gpt-5.4"
    export LLM_API_KEY="your-api-key"
    ```
 
 4. **Run Strix in development mode**
    ```bash
-   poetry run strix --target https://example.com
+   uv run strix --target https://example.com
    ```
 
 ## 📚 Contributing Skills
