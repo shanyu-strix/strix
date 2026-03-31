@@ -5439,7 +5439,7 @@ wheels = [
 
 [[package]]
 name = "strix-agent"
-version = "0.8.2"
+version = "0.8.3"
 source = { editable = "." }
 dependencies = [
     { name = "cvss" },
@@ -5540,7 +5540,7 @@ dev = [
 [[package]]
 name = "strix-autoupdater"
 version = "0.1.0"
-source = { git = "https://github.com/usestrix/strix-autoupdater.git#7b6e4b13d8867b228a1a71d2e5208ff22530d4ac" }
+source = { git = "https://github.com/usestrix/strix-autoupdater.git#ac42715c1149a324a286000ec443e4d9edd287ef" }
 dependencies = [
     { name = "cryptography" },
     { name = "requests" },

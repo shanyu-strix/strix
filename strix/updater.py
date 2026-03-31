@@ -147,6 +147,13 @@ def handle_update_command(argv: list[str]) -> None:  # noqa: PLR0912, PLR0915
 
     # Default: run manual update
     try:
+        from rich.progress import (
+            BarColumn,
+            DownloadColumn,
+            Progress,
+            TextColumn,
+            TransferSpeedColumn,
+        )
         from strix_autoupdater import AutoUpdater
         from strix_autoupdater.release.github import GitHubReleaseService
         from strix_autoupdater.signing.ed25519 import Ed25519SigningService
@@ -154,14 +161,16 @@ def handle_update_command(argv: list[str]) -> None:  # noqa: PLR0912, PLR0915
         current = _get_version()
         console.print(f"[dim]Checking for updates (current: v{current})...[/dim]")
 
+        release_service = GitHubReleaseService(repo=repo)
+
         updater = AutoUpdater(
             current_version=current,
-            release_service=GitHubReleaseService(repo=repo),
+            release_service=release_service,
             signing_service=Ed25519SigningService(public_key=RELEASE_PUBLIC_KEY),
             reexec=False,
         )
 
-        release = GitHubReleaseService(repo=repo).get_latest_release()
+        release = release_service.get_latest_release()
         if release is None:
             console.print("[dim]Update failed: could not reach GitHub.[/dim]")
             sys.exit(1)
@@ -201,8 +210,31 @@ def handle_update_command(argv: list[str]) -> None:  # noqa: PLR0912, PLR0915
                     console.print(f"[dim]Available: {', '.join(available)}[/dim]")
                 sys.exit(1)
 
-        console.print(f"[dim]Updating v{current} → v{info.version}...[/dim]")
-        if updater.update():
+        console.print(f"[dim]Downloading v{info.version}...[/dim]")
+
+        progress = Progress(
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            DownloadColumn(),
+            TransferSpeedColumn(),
+            console=console,
+        )
+
+        def _make_progress_callback(task_id: object) -> object:
+            def _callback(downloaded: int, total: int | None) -> None:
+                if total is not None:
+                    progress.update(task_id, total=total, completed=downloaded)
+                else:
+                    progress.update(task_id, completed=downloaded)
+
+            return _callback
+
+        with progress:
+            task = progress.add_task("Updating", total=None)
+            release_service.set_progress_callback(_make_progress_callback(task))
+            updated = updater.update()
+
+        if updated:
             console.print(f"[green]Updated to v{info.version}[/green]")
         else:
             console.print(
